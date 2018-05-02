@@ -1,3 +1,4 @@
+# coding: utf-8
 '''
 data format: vid1: [{'timestamp': [t0, t1]}, {'timestamp': [t2, t3]}], vid2: [], ...
 
@@ -19,6 +20,7 @@ test_anno_folder = 'th14_temporal_annotations_test/annotation'
 
 
 video_info_file = 'thumos_video_info.json' # THUMOS14 website provided meta data, I already convert original .mat data to .json data
+# type: dict
 video_info = json.load(open(video_info_file, 'r'))
 
 sources = {'val': val_anno_folder, 'test': test_anno_folder}
@@ -26,10 +28,14 @@ sources = {'val': val_anno_folder, 'test': test_anno_folder}
 
 val_split = {'train': 0.8, 'val': 0.2}  # further split validation set into train set and validation set
 
-# feature file
+# feature file: len(feat_data.keys())=412, 412 videos
+# feat_data has 412 groups, each group has 3 members: [u'c3d_features', u'total_frames', u'valid_frames'] (each is a dataset)
+# for example:
+# input: feat_data['video_validation_0000987']['c3d_features']
+# output: <HDF5 dataset "c3d_features": shape (192, 4096), type "<f4">     (192 = valid_frames / 16)
+# you can use feat_data['video_validation_0000987']['c3d_features'].value to access the feat data
 feat_path = 'features/thumos14_c3d_fc6.hdf5'
 feat_data = h5py.File(feat_path, 'r')
-
 
 feat_resolution = 16
 
@@ -47,7 +53,7 @@ for split in sources.keys():
 		for line in annos:
 			items = line.strip().split()
 			assert len(items) == 3
-			vid = items[0]
+			vid = items[0]  # video name
 
 			extracted_frame_num = int(feat_data[vid]['total_frames'].value)
 			valid_frame_num = int(feat_data[vid]['valid_frames'].value)

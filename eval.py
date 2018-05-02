@@ -1,3 +1,4 @@
+# coding: utf-8
 """
 Evaluate performance of generated proposals: avg recall vs avg proposal number, recall@1000 proposals vs tiou threshold
 
@@ -19,15 +20,15 @@ def segment_tiou(target_segments, test_segments):
     """Compute intersection over union btw segments
     Parameters
     ----------
-    target_segments : ndarray
+    target_segments(ground truth) : ndarray
         2-dim array in format [m x 2:=[init, end]]
-    test_segments : ndarray
+    test_segments(proposal) : ndarray
         2-dim array in format [n x 2:=[init, end]]
     Outputs
     -------
     tiou : ndarray
         2-dim array [m x n] with IOU ratio.
-    Note: It assumes that target-segments are more scarce that test-segments
+    Note: It assumes that target-segments are more scarce than test-segments
     """
     if target_segments.ndim != 2 or test_segments.ndim != 2:
         raise ValueError('Dimension of arguments is incorrect')
@@ -104,12 +105,11 @@ def recall_vs_tiou_thresholds(proposals, ground_truth, nr_proposals=1000,
     
     # To obtain the average number of proposals, we need to define a 
     # percentage of proposals to get per video.
-    #pcn = (video_lst.shape[0] * float(nr_proposals)) / proposals.shape[0]
+    # see #line224
     proposal_total_number = 0
     for videoid in proposals.keys():
         proposal_total_number += len(proposals[videoid])
     pcn = (video_lst.shape[0] * float(nr_proposals)) / float(proposal_total_number)
-    
     
     # Computes recall at different tiou thresholds.
     matches = np.empty((video_lst.shape[0], tiou_thresholds.shape[0]))
@@ -166,8 +166,7 @@ def average_recall_vs_nr_proposals(proposals, ground_truth,
     for videoid in video_lst:
         
         # Get proposals for this video.
-        #prop_idx = proposals['video-name'] == videoid
-        #this_video_proposals = proposals[prop_idx][['f-init', 'f-end']].values
+        # shape: [X, 2]
         this_video_proposals = np.array([item['timestamp'] for item in proposals[videoid]], dtype='float32')
 
         # Sort proposals by score.
@@ -178,8 +177,7 @@ def average_recall_vs_nr_proposals(proposals, ground_truth,
         this_video_proposals = this_video_proposals[sort_idx, :]
         
         # Get ground-truth instances associated to this video.
-        #gt_idx = ground_truth['video-name'] == videoid
-        #this_video_ground_truth = ground_truth[gt_idx][['f-init', 'f-end']].values
+        # 
         this_video_ground_truth = np.array(ground_truth[videoid]['timestamps'], dtype='float32')
         
         # Compute tiou scores.
@@ -202,7 +200,8 @@ def average_recall_vs_nr_proposals(proposals, ground_truth,
         # Inspect positives retrieved per video at different 
         # number of proposals (percentage of the total retrieved).
         for i, score in enumerate(score_lst):
-            # Total positives per video.
+            # score: tiou, m * n
+            # Total positives per video. (ground truth)
             positives[i] = score.shape[0]
             
             for j, pcn in enumerate(pcn_lst):
@@ -228,17 +227,18 @@ def average_recall_vs_nr_proposals(proposals, ground_truth,
 
 options = default_options()
 split = 'test'
-result_filename = 'results/1/predict_proposals.json'
+result_filename = 'results/{}/predict_proposals.json'.format(options['train_id'])
 results = json.load(open(result_filename, 'r'))['results']
-#ground_truth_filename = options['proposal_data_path']+'/thumos14_temporal_proposal_%s.json'%split
+# ground_truth_filename = options['proposal_data_path']+'/thumos14_temporal_proposal_%s.json'%split
 ground_truth_filename = 'dataset/thumos14/gt_proposals/thumos14_temporal_proposal_%s.json'%split
 ground_truth = json.load(open(ground_truth_filename, 'r'))
 recalls_avg, proposals_per_video = average_recall_vs_nr_proposals(results, ground_truth, np.array(options['tiou_measure']))
 recalls_tiou, tiou_thresholds = recall_vs_tiou_thresholds(results, ground_truth)
 
-fid = h5py.File('results/1/recall_prop.hdf5', 'w')
+fid = h5py.File('results/{}/recall_prop.hdf5'.format(options['train_id']), 'w')
 
-fid.create_group('recall').create_dataset('recall', data=recalls_avg)
+fid.create_group('recall_avg').create_dataset('recalls_avg', data=recalls_avg)
+fid.create_group('recall_tiou').create_dataset('recalls_tiou', data=recalls_tiou)
 fid.create_group('proposals_per_video').create_dataset('proposal', data=proposals_per_video)
 fid.close()
 

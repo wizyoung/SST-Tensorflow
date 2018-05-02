@@ -40,7 +40,7 @@ def default_options():
     options['batch_size'] = 160      # training batch size
     options['eval_batch_size'] = 40  # evaluation (loss) batch size
     options['learning_rate'] = 1e-3  # initial learning rate (I fix learning rate to 1e-3 during training phase)
-    options['reg'] = 1e-5            # regularization strength (control L2 regularization ratio)
+    options['reg'] = 1e-2            # regularization strength (control L2 regularization ratio)
     options['init_scale'] = 0.08     # the init scale for uniform distribution
     options['max_epochs'] = 100    # maximum training epochs to run
     options['init_epoch'] = 0        # initial epoch (useful when you needs to continue from some checkpoints)
@@ -49,7 +49,7 @@ def default_options():
     options['shuffle'] = True        # whether do data shuffling for training set
     options['clip_gradient_norm'] = 100.0      # threshold to clip gradients: avoid gradient exploding problem; set to -1 to remove gradient clipping
     options['log_input_min']  = 1e-20          # minimum input to the log() function
-    options['sample_len'] = 2048/16 + 1        # the length ratio of the sampled stream compared to the video 
+    options['sample_len'] = 2048/16        # the length ratio of the sampled stream compared to the video 
     options['proposal_tiou_threshold'] = 0.5   # tiou threshold to generate positive samples, when changed, re-calculate class weights for positive/negative class
     options['n_iters_display'] = 1             # display frequency
     options['ckpt_prefix'] = 'checkpoints/' + str(options['train_id']) + '/' # folder path to save checkpionts during training 

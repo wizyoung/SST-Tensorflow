@@ -1,3 +1,4 @@
+# coding: utf-8
 '''
 This script is to calculate class weights for Thumos14 dataset by uniform random sampling
 
@@ -9,11 +10,10 @@ import h5py
 import json
 import math
 import numpy as np
-import h5py
 import random
 
 """
-Calculate tIoU
+Calculate tIoU, 1D form
 """
 def get_iou(pred, gt):
     start_pred, end_pred = pred
@@ -36,7 +36,6 @@ def get_intersection(region1, region2):
     return (start, end)
 
 
-
 feature_path = '../features/thumos14_c3d_fc6.hdf5'
 features = h5py.File(feature_path, 'r')
 
@@ -44,15 +43,13 @@ splits = {'train', 'val', 'test'}
 
 proposal_source = '../gt_proposals'
 
-split = 'train'
-proposal_file_path = os.path.join(proposal_source, 'thumos14_temporal_proposal_%s.json'%split)
-proposal_train = json.load(open(proposal_file_path, 'r'))
-
 n_anchors = 32
 c3d_resolution = 16
 # anchor length is measured in frame number 
+# 33 * 16 = 528
 anchors = list(range(c3d_resolution, (n_anchors+1)*c3d_resolution, c3d_resolution))
-sample_len = 2048/16 # length of sampled stream, measured in feature number 
+# 固定长度的 sample, 长度为 128
+sample_len = 2048/16 # length of sampled stream, measured in feature number, 128
 sample_num = 100     # sampling number for a video 
 
 print('Anchors are: (in frames)')
@@ -68,7 +65,7 @@ sum_sample_length = 0
 weights = [[0., 0.] for _ in range(n_anchors)]
 
 # output path to save calculated weights
-out_weight_path = 'weights.json'
+out_weight_path = 'weights2.json'
 
 print('Get anchor weights ...')
 # encode proposal information
@@ -87,10 +84,13 @@ for index, vid in enumerate(video_ids):
 
     this_sample_len = min(feature_len, sample_len)
 
+    # TODO: sample_num can be set to bigger number
     for sample_id in range(sample_num):
         # sample with stride = c3d_resolution
+        # end_feat_id - start_feat_id 要么是 sample_len(128), 要么是整个视频的长(<128), 也就是 this_sample_len
         start_feat_id = random.randint(0, max((feature_len - sample_len), 0))
         end_feat_id = min(start_feat_id + sample_len, feature_len)
+
         start_frame_id = start_feat_id * c3d_resolution + c3d_resolution / 2
         end_frame_id = (end_feat_id - 1) * c3d_resolution + c3d_resolution / 2
 
@@ -113,12 +113,12 @@ for index, vid in enumerate(video_ids):
             for feat_id in range(feat_check_start, feat_check_end + 1):
                 frame_id = feat_id*c3d_resolution + c3d_resolution/2
                 for anchor_id, anchor in enumerate(anchors):
-                    pred = (frame_id + 1- anchor, frame_id + 1)
+                    pred = (frame_id + 1 - anchor, frame_id + 1)
+                    # print frame_id, anchor
                     tiou = get_iou(pred, (start, end + 1))
                     #print('tiou: %f'%tiou)
                     if tiou > 0.5:
                         count_anchors[anchor_id] += 1
-
 
 for i in range(n_anchors):
     # weight for negative label
@@ -131,7 +131,7 @@ print('Writing ...')
 with open(out_weight_path, 'w') as fid:
     json.dump(weights, fid)
 
-with open('weights.txt', 'w') as fid:
+with open('weights2.txt', 'w') as fid:
     for w in weights:
         fid.write('%.4f\t%.4f\n'%(w[0], w[1]))
 
